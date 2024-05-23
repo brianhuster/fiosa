@@ -2,13 +2,12 @@ from llama_cpp import Llama
 import subprocess
 import re
 import time
-import platform
 import sys
 import os
-import distro
 from termcolor import colored
 import inquirer
 import pyperclip
+from system_msg import message
 
 def select(question, options):
     questions = [
@@ -20,21 +19,19 @@ def select(question, options):
     answers = inquirer.prompt(questions)
     return answers['choice']
 
-def print_stream(text):
+def print_stream(text, delay=0.05):
     for letter in text:
         print(letter, end='', flush=True)
-        time.sleep(0.05) 
+        time.sleep(delay) 
 
-def system_info(): 
-    dict={
-        "device": platform.node(),
-        "OS": "MacOS" if platform.system()=="Darwin" else platform.system(),    
-        "kernel": platform.release(),
-        "distro": distro.name() + ' ' + distro.version(),
-        "processor": platform.machine()
-    }
-    return ', '.join(f"{key} '{value}'" for key, value in dict.items())
-
+def calculate(user_input):
+    expression=re.findall(r'^\d+(?:\.\d+)?(?:[+\-*/]\d+(?:\.\d+)?)*$', user_input)
+    results=[]
+    if not expression:
+        return None
+        for exp in expression:
+            results.append(f"{exp} = {eval(exp)}")
+    return ', '.join(results)
 
 # Save the original stderr
 original_stderr = sys.stderr
@@ -48,12 +45,12 @@ llm = Llama(
     n_threads=4,  # The number of CPU threads to use, tailor to your system and the resulting performance. It is double the number of cores in your CPU.
     temperature=0.5,  # The temperature of the model, controlling the randomness of the output
     top_p=0.5,  # The nucleus sampling parameter, controlling the diversity of the output
-    n_gpu_layers=32,  # The number of layers to offload to GPU, if you have GPU acceleration available
+    n_gpu_layers=35,  # The number of layers to offload to GPU, if you have GPU acceleration available
     chat_format="llama-2",  # Set the chat format according to the model you are using
     n_ctx=4096,  # The maximum context length to use
-    top_k=100,
     do_sample=True,
     use_cache=True,
+    top_k=100,
 )
 
 # Restore stderr
@@ -61,16 +58,18 @@ sys.stderr = original_stderr
 
 # Initialize the chat
 messages = [
-        {"role": "system", "content": f"You are a helpful AI assistant for your user who is using {system_info()}. You tend to respond briefly and straight to the point. You don't explain much. You prefer terminal to GUI. You always tag terminal command as 'bash', for example '```bash\nls -l\n```'."},
+        {"role": "system", "content": message()},
 ]
-
 
 print("Welcome to the chat! You can start chatting with the AI assistant.\nNote : You can press Ctrl+C to interrupt AI response, Ctrl+D to exit the chat.")
 
 while True:
     try:
         user_input = input(colored("You: ", 'green'))
+        user_input+="Given that "+calculate(user_input) if calculate(user_input) else ""
         messages.append({"role": "user", "content": user_input})
+
+        # bot response
         print(colored("Assistant: ", 'green'), end="")
         print_stream("Please wait, I am thinking...")
         original_stderr = sys.stderr
@@ -82,13 +81,19 @@ while True:
             if 'content' in delta:
                 assistant_output += delta['content']
                 print_stream(delta['content'])
-        # Print out each letter one by one
-        print()  # Print a newline at the end
+        print("\n")
         sys.stderr = original_stderr
 
         messages.append({"role": "assistant", "content": assistant_output})
+        print(messages)
+
+        # handle output
         # Check if the output contains a command line
         commands = re.findall(r'```(?:bash)?\n(.*?)\n```', assistant_output, re.DOTALL)
+        for command in commands:
+            if '\n' in command:
+                commands.remove(command)
+                commands.extend(command.split('\n'))
         if commands:
             question = "Do you want to execute the command" + ('s' if  len(commands)>1 else '') + "that I suggested?"
             options = ["Let me see each command and decide", "Yes, execute all commands", "No, continue the chat"]
@@ -100,7 +105,10 @@ while True:
                     if subChoice == subOptions[0] or subChoice == subOptions[1]:
                         run_shell = subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         if subChoice == subOptions[1]:
-                            messages.append({"role": "terminal", "content": f"Output of the command {command} :\n{run_shell.stdout}\n{run_shell.stderr}"})
+                            if run_shell.returncode == 0:
+                                messages.append({"role": "terminal", "content": f"Output of the command `{command}` : \n```\n{run_shell.stdout}\n```"})
+                            else:
+                                messages.append({"role": "terminal", "content": f"Output of the command `{command}` : \n```\n{run_shell.stderr}\n```"})
                             print(messages)
                     else:
                         if subChoice == subOptions[2]:

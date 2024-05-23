@@ -1,2 +1,4 @@
 models/
 venv/
+test.py
+.pretterrc
