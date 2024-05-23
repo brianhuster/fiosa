@@ -7,7 +7,7 @@ import os
 from termcolor import colored
 import inquirer
 import pyperclip
-from system_msg import message
+import system_instruct 
 
 def select(question, options):
     questions = [
@@ -58,7 +58,7 @@ sys.stderr = original_stderr
 
 # Initialize the chat
 messages = [
-        {"role": "system", "content": message()},
+        {"role": "system", "content": system_instruct.message()},
 ]
 
 print("Welcome to the chat! You can start chatting with the AI assistant.\nNote : You can press Ctrl+C to interrupt AI response, Ctrl+D to exit the chat.")
