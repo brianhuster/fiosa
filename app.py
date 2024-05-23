@@ -33,6 +33,34 @@ def calculate(user_input):
         results.append(f"{exp} = {eval(exp)}")
     return ', '.join(results)
 
+def handle_commands(assistant_output):
+    commands = re.findall(r'```bash\n(.*?)\n```', assistant_output, re.DOTALL)
+    for command in commands:
+        if '\n' in command:
+            commands.remove(command)
+            commands.extend(command.split('\n'))
+    if commands:
+        question = "Do you want to execute the command" + ('s' if  len(commands)>1 else '') + " that I suggested?"
+        options = ["Let me see each command and decide", "Yes, execute all commands", "No, continue the chat"]
+        choice = select(question, options)
+        if choice == options[0]:
+            for command in commands:
+                subOptions=["Yes, but not allow AI to read output and error", "Yes, and also allow AI to read output and error", "No, just copy command to clipboard", "No, just skip this command"]
+                subChoice=select("Do you want to execute the command "+colored(command, 'yellow')+"?", subOptions)
+                if subChoice == subOptions[0] or subChoice == subOptions[1]:
+                    run_shell(command)
+                    if subChoice == subOptions[1]:
+                        messages.append({"role": "user", "content": run_shell(command)})
+                elif subChoice == subOptions[2]:
+                    print("Command copied to clipboard")
+                    pyperclip.copy(command)
+                else:
+                    print("Command skipped")
+
+        elif choice == options[1]:
+            for command in commands:
+                run_shell(command)      
+
 def run_shell(command):
     try:
         run_shell = subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -73,6 +101,8 @@ messages = [
 
 print("Welcome to the chat! You can start chatting with the AI assistant.\nNote : You can press Ctrl+C to interrupt AI response, Ctrl+D to exit the chat.")
 
+assistant_output = ''
+
 while True:
     try:
         user_input = input(colored("You: ", 'green'))
@@ -81,11 +111,10 @@ while True:
 
         # bot response
         print(colored("Assistant: ", 'green'), end="")
-        print_stream("Please wait, I am thinking...")
+        print_stream("Please wait, I am thinking...\n")
         original_stderr = sys.stderr
         sys.stderr = open(os.devnull, 'w')
         output = llm.create_chat_completion(messages=messages, stream=True)
-        assistant_output = ""
         for chunk in output:
             delta = chunk['choices'][0]['delta']
             if 'content' in delta:
@@ -98,38 +127,11 @@ while True:
         print(messages)
 
         # handle output
-        # Check if the output contains a command line
-        commands = re.findall(r'```(?:bash)?\n(.*?)\n```', assistant_output, re.DOTALL)
-        for command in commands:
-            if '\n' in command:
-                commands.remove(command)
-                commands.extend(command.split('\n'))
-        if commands:
-            question = "Do you want to execute the command" + ('s' if  len(commands)>1 else '') + " that I suggested?"
-            options = ["Let me see each command and decide", "Yes, execute all commands", "No, continue the chat"]
-            choice = select(question, options)
-            if choice == options[0]:
-                for command in commands:
-                    subOptions=["Yes, but not allow AI to see output and error", "Yes, and also allow AI to see output and error", "No, just copy command to clipboard", "No, just skip this command"]
-                    subChoice=select("Do you want to execute the command "+colored(command, 'yellow')+"?", subOptions)
-                    if subChoice == subOptions[0] or subChoice == subOptions[1]:
-                        run_shell(command)
-                        if subChoice == subOptions[1]:
-                            messages.append({"role": "user", "content": run_shell(command)})
-                    elif subChoice == subOptions[2]:
-                        print("Command copied to clipboard")
-                        pyperclip.copy(command)
-                    else:
-                        print("Command skipped")
-
-            elif choice == options[1]:
-                for command in commands:
-                    run_shell(command)
-            else:
-                continue
-
+        handle_commands(assistant_output)
+        
     except (KeyboardInterrupt):
         print('\n')
+        handle_commands(assistant_output)
         continue
 
     except (EOFError):
