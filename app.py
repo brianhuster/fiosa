@@ -57,7 +57,6 @@ llm = Llama(
     temperature=0.5,  # The temperature of the model, controlling the randomness of the output
     top_p=0.5,  # The nucleus sampling parameter, controlling the diversity of the output
     n_gpu_layers=35,  # The number of layers to offload to GPU, if you have GPU acceleration available
-    chat_format="llama-2",  # Set the chat format according to the model you are using
     n_ctx=4096,  # The maximum context length to use
     do_sample=True,
     use_cache=True,
