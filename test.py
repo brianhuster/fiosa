@@ -1,13 +1,12 @@
-import platform
-import distro
+import re
 
-system_info = {
-    "device": platform.node(),
-    "OS": platform.system(),    
-    "kernel": platform.release(),
-    "distro": distro.name() + ' ' + distro.version(),
-    "processor": platform.machine()
-}
+def calculate(user_input):
+    expression=re.findall(r'\d+(?:\.\d+)?(?:[+\-*/]\d+(?:\.\d+)?)*', user_input)
+    results=[]
+    if not expression:
+        return None
+        for exp in expression:
+            results.append(f"{exp} = {eval(exp)}")
+    return ', '.join(results)
 
-for key, value in system_info.items():
-    print(f"{key}: {value}")
+print(calculate("Calcucate 247*768"))
