@@ -1,6 +1,13 @@
-import re
+import platform
+import distro
 
-assistant_output = "```bash\nsudo iwconfig wlan0 ssid \"Your_SSID_Here\"\n```"
-commands = re.findall(r'```(?:bash)?\n(.*?)\n```', assistant_output, re.DOTALL)
+system_info = {
+    "device": platform.node(),
+    "OS": platform.system(),    
+    "kernel": platform.release(),
+    "distro": distro.name() + ' ' + distro.version(),
+    "processor": platform.machine()
+}
 
-print(commands)  # Outputs: ['sudo iwconfig wlan0 ssid "Your_SSID_Here"']
+for key, value in system_info.items():
+    print(f"{key}: {value}")
