@@ -41,7 +41,7 @@ sys.stderr = open(os.devnull, 'w')
 
 # Set gpu_layers to the number of layers to offload to GPU. Set to 0 if no GPU acceleration is available on your system.
 llm = Llama(
-    model_path="./models/stable-code-3b-q4_k_m.gguf",  
+    model_path="./models/stable-code-3b-q5_k_m.gguf",  
     n_threads=4,  # The number of CPU threads to use, tailor to your system and the resulting performance. It is double the number of cores in your CPU.
     temperature=0.5,  # The temperature of the model, controlling the randomness of the output
     top_p=0.5,  # The nucleus sampling parameter, controlling the diversity of the output
@@ -95,7 +95,7 @@ while True:
                 commands.remove(command)
                 commands.extend(command.split('\n'))
         if commands:
-            question = "Do you want to execute the command" + ('s' if  len(commands)>1 else '') + "that I suggested?"
+            question = "Do you want to execute the command" + ('s' if  len(commands)>1 else '') + " that I suggested?"
             options = ["Let me see each command and decide", "Yes, execute all commands", "No, continue the chat"]
             choice = select(question, options)
             if choice == options[0]:
@@ -106,10 +106,13 @@ while True:
                         run_shell = subprocess.run(command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         if subChoice == subOptions[1]:
                             if run_shell.returncode == 0:
-                                messages.append({"role": "terminal", "content": f"Output of the command `{command}` : \n```\n{run_shell.stdout}\n```"})
+                                output=f"Output of the command `{command}` is : \n```\n{run_shell.stdout}\n```"
+                                print(f"\t{output}")
+                                messages.append({"role": "user", "content": output})
                             else:
-                                messages.append({"role": "terminal", "content": f"Output of the command `{command}` : \n```\n{run_shell.stderr}\n```"})
-                            print(messages)
+                                error=f"Command `{command}` causes error : \n```\n{run_shell.stderr}\n```"
+                                print(f"\t{error}")
+                                messages.append({"role": "user", "content": error})
                     else:
                         if subChoice == subOptions[2]:
                             print("Command copied to clipboard")
