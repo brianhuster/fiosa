@@ -3,6 +3,7 @@ This is Fiosa, your Fully Integrated Operating System Assistant. It can run **lo
 
 ## Installation
 Clone this repository
+
 `git clone https://github.com/brianhuster/fiosa/`
 
 `cd fiosa`
