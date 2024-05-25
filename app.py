@@ -9,6 +9,14 @@ import inquirer
 import pyperclip
 import system_instruct 
 
+logo="""
+ _____ _                 
+|  ___(_) ___  ___  __ _ 
+| |_  | |/ _ \/ __|/ _` |
+|  _| | | (_) \__ \ (_| |
+|_|   |_|\___/|___/\__,_|
+"""
+
 def select(question, options):
     questions = [
         inquirer.List('choice',
@@ -72,6 +80,21 @@ def run_shell(command):
         print(f"\t{error}")
         return error
 
+def exitProgram():
+    print("Exiting the program...")
+    llm.reset()
+    llm.set_cache(None)
+    llm = None
+    del llm
+    llm = None
+    sys.exit(0)
+
+def handle_sigtstp(signum, frame):
+    exitProgram()
+
+# Register the signal handler for SIGTSTP
+signal.signal(signal.SIGTSTP, handle_sigtstp)
+
 # Save the original stderr
 original_stderr = sys.stderr
 
@@ -99,18 +122,21 @@ messages = [
         {"role": "system", "content": system_instruct.message()},
 ]
 
-print("Welcome to the chat! You can start chatting with the AI assistant.\nNote : You can press Ctrl+C to interrupt AI response, Ctrl+D to exit the chat.")
+print(colored(logo, 'cyan'))
+print(colored("Fiosa:", "green"), "I am Fiosa, your Fully Integrated Operating System Assistant. I'm powered by AI, so surprises and mistakes are possible. Make sure to verify any generated code or suggestions before using them. How can I help you today?")
+print(colored("Note : You can press Ctrl+C to interrupt AI response, Ctrl+D or Ctrl+Z to exit the chat.", 'yellow'))
 
-assistant_output = ''
 
 while True:
+
+    assistant_output = ''
     try:
         user_input = input(colored("You: ", 'green'))
         user_input+="Given that "+calculate(user_input) if calculate(user_input) else ""
         messages.append({"role": "user", "content": user_input})
 
         # bot response
-        print(colored("Assistant: ", 'green'), end="")
+        print(colored("Fiosa: ", 'green'), end="")
         print_stream("Please wait, I am thinking...\n")
         original_stderr = sys.stderr
         sys.stderr = open(os.devnull, 'w')
@@ -124,7 +150,6 @@ while True:
         sys.stderr = original_stderr
 
         messages.append({"role": "assistant", "content": assistant_output})
-        print(messages)
 
         # handle output
         handle_commands(assistant_output)
