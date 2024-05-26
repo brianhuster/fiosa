@@ -3,3 +3,4 @@ distro
 termcolor
 pyperclip
 inquirer
+pylint

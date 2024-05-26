@@ -8,6 +8,7 @@ from termcolor import colored
 import inquirer
 import pyperclip
 import system_instruct 
+import signal
 
 logo="""
  _____ _                 
@@ -80,14 +81,6 @@ def run_shell(command):
         print(f"\t{error}")
         return error
 
-def exitProgram():
-    print("Exiting the program...")
-    llm.reset()
-    llm.set_cache(None)
-    llm = None
-    del llm
-    llm = None
-    sys.exit(0)
 
 def handle_sigtstp(signum, frame):
     exitProgram()
@@ -113,6 +106,15 @@ llm = Llama(
     use_cache=True,
     top_k=100,
 )
+
+def exitProgram():
+    print("\nExiting the program...")
+    llm.reset()
+    llm.set_cache(None)
+    llm = None
+    del llm
+    llm = None
+    sys.exit(0)
 
 # Restore stderr
 sys.stderr = original_stderr
@@ -160,6 +162,4 @@ while True:
         continue
 
     except (EOFError):
-        print("\nExiting the chat...")
-        break
-        exit(0)
+        exitProgram()
